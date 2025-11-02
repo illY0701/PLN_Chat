@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+
+{% block title %}Chat Inteligente - PLN Sistema{% endblock %}
+
+{% block content %}
+<div class="chat-wrapper">
+    <div class="chat-card">
+        <div class="chat-header">
+            <h2>💬 Chat Inteligente</h2>
+            <p>Converse com nossa IA especializada em Processamento de Linguagem Natural</p>
+        </div>
+        
+        <div class="chat-container" id="chat-container">
+            <div class="empty-state fade-in-up" id="welcome-message">
+                <div class="empty-state-icon">👋</div>
+                <h3>Bem-vindo ao PLN Chat!</h3>
+                <p>Faça uma pergunta ou comece uma conversa. Nossa IA está pronta para ajudar!</p>
+                <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                    <button class="suggestion-btn" data-suggestion="me dá as vogais">📝 Vogais</button>
+                    <button class="suggestion-btn" data-suggestion="quantas patas tem um leão">🦁 Animais</button>
+                    <button class="suggestion-btn" data-suggestion="o que é python">💻 Tecnologia</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="chat-input-wrapper">
+            <form id="chat-form" class="input-group-premium">
+                <input 
+                    type="text" 
+                    id="prompt-input" 
+                    class="input-premium" 
+                    placeholder="Digite sua mensagem aqui..." 
+                    maxlength="500"
+                    autocomplete="off"
+                    autofocus
+                    aria-label="Campo de mensagem"
+                >
+                <button type="submit" id="send-btn" class="btn-premium" aria-label="Enviar mensagem">
+                    <span id="btn-text">Enviar</span>
+                    <span id="btn-icon">🚀</span>
+                </button>
+            </form>
+            <div id="chat-spinner" style="display:none; text-align: center; margin-top: 1rem;">
+                <div class="spinner-premium"></div>
+                <p style="margin-top: 0.5rem; color: var(--text-light); font-weight: 500;">Processando...</p>
+            </div>
+            <div id="chat-meta" class="chat-meta" style="display: none;"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+.suggestion-btn {
+    padding: 0.75rem 1.5rem;
+    background: white;
+    border: 2px solid rgba(102, 126, 234, 0.2);
+    border-radius: var(--border-radius-lg);
+    color: var(--primary-color);
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-bounce);
+    font-size: 0.9rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.suggestion-btn:hover {
+    background: var(--primary-gradient);
+    color: white;
+    border-color: transparent;
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: var(--shadow-lg);
+}
+
+#btn-icon {
+    margin-left: 0.5rem;
+    transition: var(--transition);
+}
+
+.btn-premium:hover #btn-icon {
+    transform: translateX(3px) rotate(15deg);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const chatContainer = document.getElementById('chat-container');
+const chatForm = document.getElementById('chat-form');
+const promptInput = document.getElementById('prompt-input');
+const sendBtn = document.getElementById('send-btn');
+const btnText = document.getElementById('btn-text');
+const btnIcon = document.getElementById('btn-icon');
+const chatSpinner = document.getElementById('chat-spinner');
+const chatMeta = document.getElementById('chat-meta');
+const welcomeMessage = document.getElementById('welcome-message');
+
+let messageCount = 0;
+
+// Suggestion buttons
+document.querySelectorAll('.suggestion-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        promptInput.value = this.dataset.suggestion;
+        promptInput.focus();
+        chatForm.dispatchEvent(new Event('submit'));
+    });
+});
+
+chatForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const prompt = promptInput.value.trim();
+    if (!prompt) return;
+    
+    // Hide welcome message with animation
+    if (welcomeMessage) {
+        welcomeMessage.style.animation = 'fadeOut 0.3s ease-out forwards';
+        setTimeout(() => {
+            welcomeMessage.style.display = 'none';
+        }, 300);
+    }
+    
+    // Display user message with animation
+    appendMessage(prompt, 'user');
+    promptInput.value = '';
+    
+    // Show loading state with animation
+    chatSpinner.style.display = 'block';
+    chatSpinner.style.animation = 'fadeInUp 0.3s ease-out';
+    sendBtn.disabled = true;
+    btnText.textContent = 'Processando...';
+    btnIcon.textContent = '⏳';
+    
+    // Add typing animation
+    promptInput.style.transform = 'scale(0.98)';
+    
+    try {
+        const response = await fetch('', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken') || ''
+            },
+            body: JSON.stringify({ prompt: prompt })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            appendMessage(data.response, 'bot');
+            
+            if (data.processing_time || data.model) {
+                chatMeta.style.display = 'flex';
+                chatMeta.style.animation = 'fadeInUp 0.4s ease-out';
+                const timeStr = data.processing_time ? data.processing_time.toFixed(2) + 's' : '?s';
+                const modelStr = data.model || 'local';
+                chatMeta.innerHTML = `
+                    <span>⚡ ${timeStr}</span> 
+                    <span style="opacity: 0.3;">•</span> 
+                    <span>🤖 ${modelStr}</span>
+                `;
+            }
+        } else {
+            appendMessage('❌ ' + (data.error || 'Erro ao processar sua mensagem. Tente novamente.'), 'bot', true);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        appendMessage('❌ Desculpe, ocorreu um erro ao processar sua solicitação. Verifique sua conexão e tente novamente.', 'bot', true);
+    } finally {
+        chatSpinner.style.animation = 'fadeOut 0.3s ease-out forwards';
+        setTimeout(() => {
+            chatSpinner.style.display = 'none';
+        }, 300);
+        sendBtn.disabled = false;
+        btnText.textContent = 'Enviar';
+        btnIcon.textContent = '🚀';
+        promptInput.style.transform = 'scale(1)';
+        promptInput.focus();
+    }
+});
+
+function appendMessage(text, sender, isError = false) {
+    messageCount++;
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${sender}-message ${sender === 'user' ? 'slide-in-right' : 'slide-in-left'}`;
+    
+    if (isError) {
+        messageDiv.style.border = '2px solid var(--error-color)';
+        messageDiv.style.background = 'rgba(235, 51, 73, 0.1)';
+    }
+    
+    const textDiv = document.createElement('div');
+    textDiv.textContent = text;
+    messageDiv.appendChild(textDiv);
+    
+    const timeDiv = document.createElement('span');
+    timeDiv.className = 'message-time';
+    timeDiv.textContent = new Date().toLocaleTimeString('pt-BR', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        second: '2-digit'
+    });
+    messageDiv.appendChild(timeDiv);
+    
+    chatContainer.appendChild(messageDiv);
+    
+    // Smooth scroll with animation
+    setTimeout(() => {
+        chatContainer.scrollTo({
+            top: chatContainer.scrollHeight,
+            behavior: 'smooth'
+        });
+    }, 100);
+    
+    // Add hover effect after animation
+    setTimeout(() => {
+        messageDiv.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+    }, 500);
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Enhanced input interactions
+promptInput.addEventListener('focus', function() {
+    this.style.transform = 'scale(1.02)';
+    this.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.15), var(--shadow-lg)';
+});
+
+promptInput.addEventListener('blur', function() {
+    this.style.transform = 'scale(1)';
+    this.style.boxShadow = '';
+});
+
+promptInput.addEventListener('input', function() {
+    if (this.value.length > 0) {
+        sendBtn.style.opacity = '1';
+        sendBtn.style.transform = 'scale(1)';
+    } else {
+        sendBtn.style.opacity = '0.7';
+    }
+});
+
+// Keyboard shortcuts with visual feedback
+promptInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendBtn.style.animation = 'pulse 0.3s ease-out';
+        setTimeout(() => {
+            sendBtn.style.animation = '';
+        }, 300);
+        chatForm.dispatchEvent(new Event('submit'));
+    }
+});
+
+// Add fadeOut animation
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes fadeOut {
+        from {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        to {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+    }
+`;
+document.head.appendChild(style);
+
+// Auto-resize input on typing (if needed)
+promptInput.addEventListener('input', function() {
+    // Character counter could be added here
+    const charCount = this.value.length;
+    if (charCount > 450) {
+        this.style.borderColor = 'var(--error-color)';
+    } else {
+        this.style.borderColor = '';
+    }
+});
+
+// Page load animation
+window.addEventListener('load', function() {
+    document.body.style.opacity = '0';
+    setTimeout(() => {
+        document.body.style.transition = 'opacity 0.5s ease-out';
+        document.body.style.opacity = '1';
+    }, 100);
+});
+</script>
+{% endblock %}

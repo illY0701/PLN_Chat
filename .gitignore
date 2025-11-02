@@ -1,0 +1,17 @@
+# Ambiente virtual
+venv/
+.env
+__pycache__/
+*.pyc
+db.sqlite3
+
+# IDEs
+.vscode/
+.idea/
+
+# Logs e temporários
+*.log
+*.pot
+*.py[cod]
+*.swp
+.DS_Store

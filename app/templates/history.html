@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Histórico - PLN Sistema{% endblock %}
+
+{% block content %}
+<div class="history-wrapper">
+    <div class="history-card">
+        <div class="history-header">
+            <h2>📜 Histórico de Conversas</h2>
+            <p>Visualize todas as suas interações com a IA</p>
+        </div>
+        
+        <div class="filters-section fade-in">
+            <form method="get" class="filter-group">
+                <div class="filter-item">
+                    <label for="date_from">📅 Data Inicial</label>
+                    <input 
+                        type="date" 
+                        id="date_from"
+                        name="date_from" 
+                        class="filter-input" 
+                        value="{{ date_from|default:'' }}"
+                        aria-label="Data inicial para filtro"
+                    >
+                </div>
+                <div class="filter-item">
+                    <label for="date_to">📅 Data Final</label>
+                    <input 
+                        type="date" 
+                        id="date_to"
+                        name="date_to" 
+                        class="filter-input" 
+                        value="{{ date_to|default:'' }}"
+                        aria-label="Data final para filtro"
+                    >
+                </div>
+                <div class="filter-item">
+                    <label>&nbsp;</label>
+                    <button type="submit" class="btn-premium" style="height: fit-content; width: 100%;">
+                        🔍 Filtrar
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <div class="interactions-list">
+            {% if page_obj %}
+                {% for interaction in page_obj %}
+                <div class="interaction-item fade-in-up" style="animation-delay: {{ forloop.counter0|add:'0.1' }}s">
+                    <div class="interaction-header">
+                        <div>
+                            <span class="interaction-time">🕐 {{ interaction.timestamp|date:"d/m/Y H:i:s" }}</span>
+                        </div>
+                        <div class="interaction-meta">
+                            <span class="meta-badge">⚡ {{ interaction.processing_time|floatformat:2 }}s</span>
+                            <span class="meta-badge">🤖 {{ interaction.model|default:"local" }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="prompt-section">
+                        <div class="section-label">💭 Sua Pergunta</div>
+                        <div class="prompt-text">{{ interaction.prompt }}</div>
+                    </div>
+                    
+                    <div class="response-section">
+                        <div class="section-label">🤖 Resposta da IA</div>
+                        <div class="response-text">{{ interaction.response }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">📭</div>
+                    <h3>Nenhuma conversa encontrada</h3>
+                    <p>Comece uma conversa no chat para ver o histórico aqui!</p>
+                    <a href="{% url 'chat' %}" class="btn-premium" style="margin-top: 1.5rem; text-decoration: none; display: inline-block;">
+                        💬 Ir para o Chat
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+        
+        {% if page_obj.has_other_pages %}
+        <div class="pagination-wrapper">
+            <ul class="pagination-premium">
+                {% if page_obj.has_previous %}
+                <li>
+                    <a href="?page={{ page_obj.previous_page_number }}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" aria-label="Página anterior">
+                        ← Anterior
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="active">
+                        <a href="#" aria-label="Página atual, página {{ num }}" aria-current="page">{{ num }}</a>
+                    </li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li>
+                        <a href="?page={{ num }}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" aria-label="Ir para página {{ num }}">
+                            {{ num }}
+                        </a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if page_obj.has_next %}
+                <li>
+                    <a href="?page={{ page_obj.next_page_number }}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" aria-label="Próxima página">
+                        Próxima →
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
+        
+        {% if page_obj %}
+        <div class="export-section">
+            <a href="{% url 'export' %}?format=json" class="btn-export" aria-label="Exportar histórico em formato JSON">
+                📥 Exportar JSON
+            </a>
+            <a href="{% url 'export' %}?format=csv" class="btn-export" aria-label="Exportar histórico em formato CSV">
+                📊 Exportar CSV
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Add smooth scroll animations
+document.addEventListener('DOMContentLoaded', function() {
+    // Animate interaction items on scroll
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+    
+    const observer = new IntersectionObserver(function(entries) {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, observerOptions);
+    
+    document.querySelectorAll('.interaction-item').forEach(item => {
+        item.style.opacity = '0';
+        item.style.transform = 'translateY(20px)';
+        item.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+        observer.observe(item);
+    });
+    
+    // Add hover effects to export buttons
+    document.querySelectorAll('.btn-export').forEach(btn => {
+        btn.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-3px) scale(1.05)';
+        });
+        btn.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+        });
+    });
+    
+    // Enhance filter inputs
+    document.querySelectorAll('.filter-input').forEach(input => {
+        input.addEventListener('focus', function() {
+            this.parentElement.style.transform = 'scale(1.02)';
+        });
+        input.addEventListener('blur', function() {
+            this.parentElement.style.transform = 'scale(1)';
+        });
+    });
+});
+</script>
+{% endblock %}
