@@ -507,23 +507,9 @@ python manage.py collectstatic --noinput
 
 ## 👥 Autores
 
-- **ANNA**
-- **CÉSAR**
-- **EVILY**
-
----
-
-## 📄 Licença
-
-Este projeto foi desenvolvido para fins acadêmicos.
-
----
-
-## 🙏 Agradecimentos
-
-- Hugging Face por disponibilizar modelos e API
-- Django pela excelente framework web
-- Comunidade open source
+- **ANNA ISABELLE**
+- **CÉSAR RODRIGUES**
+- **EVILY MARIA**
 
 ---
 
